@@ -1,7 +1,7 @@
 # Niubility
 Niubility is a distributed hash table based on Chord, a structured peer-to-peer network protocol.
 
-![](logo.png)
+![50%](logo.png)
 
 ## Getting Started
 
