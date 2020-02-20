@@ -1,4 +1,4 @@
-package main.java.interfaces;
+package interfaces;
 
 import java.net.InetSocketAddress;
 
@@ -83,3 +83,4 @@ public interface ChordNode {
      */
     void stopAllThreads();
 }
+
