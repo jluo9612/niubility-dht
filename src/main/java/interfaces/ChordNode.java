@@ -2,24 +2,20 @@ package interfaces;
 
 import java.net.InetSocketAddress;
 
-/**
- * ChordNode interface defines nodes' behavior in a chord.
- * @author Zihan Zhang
- */
 public interface ChordNode {
-
     /**
      * Create or join a ring
      * @param contact
      * @return true if successfully create a ring
      * or join a ring via contact
      */
-    boolean join (InetSocketAddress contact);
+    boolean join(InetSocketAddress contact);
 
     /**
      * Notify successor that this node should be its predecessor
      * @param successor
      * @return successor's response
+     * successor
      */
     String notify(InetSocketAddress successor);
 
@@ -41,7 +37,7 @@ public interface ChordNode {
      * @param findid
      * @return closest finger preceding node's socket address
      */
-    InetSocketAddress findClosestPrecedingFinger(long findid);
+    InetSocketAddress closest_preceding_finger(long findid);
 
     /**
      * Update the finger table based on parameters.
@@ -83,4 +79,3 @@ public interface ChordNode {
      */
     void stopAllThreads();
 }
-

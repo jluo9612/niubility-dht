@@ -21,7 +21,7 @@ class NodeTest {
     }
 
     @Test
-    void findClosestPrecedingFinger() {
+    void closest_preceding_finger() {
     }
 
     @Test
