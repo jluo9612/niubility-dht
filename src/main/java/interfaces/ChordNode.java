@@ -37,7 +37,7 @@ public interface ChordNode {
      * @param findid
      * @return closest finger preceding node's socket address
      */
-    InetSocketAddress closest_preceding_finger(long findid);
+    InetSocketAddress findClosestPrecedingFinger(long findid);
 
     /**
      * Update the finger table based on parameters.

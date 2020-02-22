@@ -150,7 +150,7 @@ public class Node implements ChordNode {
 
             // if current node is local node, find my closest
             if (n.equals(this.localAddress)) {
-                n = this.closest_preceding_finger(findid);
+                n = this.findClosestPrecedingFinger(findid);
             }
 
             // else current node is remote node, sent request to it for its closest
@@ -204,7 +204,7 @@ public class Node implements ChordNode {
      * @return closest finger preceding node's socket address
      */
     @Override
-    public InetSocketAddress closest_preceding_finger(long findid) {
+    public InetSocketAddress findClosestPrecedingFinger(long findid) {
         long findid_relative = Helper.computeRelativeId(findid, localId);
 
         // check from last item in finger table
