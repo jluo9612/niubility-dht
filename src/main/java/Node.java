@@ -1,7 +1,9 @@
 
 
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+import util.HashHelper;
+import util.SocketAddrHelper;
 import interfaces.ChordNode;
+import interfaces.Stabilizeable;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
@@ -13,10 +15,10 @@ public class Node implements ChordNode {
     private InetSocketAddress predecessor;
     private HashMap<Integer, InetSocketAddress> finger;
 
-    private Listener listener;
-    private Stabilize stabilize;
-    private FixFingers fixFingers;
-    private AskPredecessor askPredecessor;
+    private RequestListener listener;
+    private Stabilizeable stabilize;
+    private UpdateFingers fixFingers;
+    private PingPredecessor askPredecessor;
 
     /**
      * Constructor
@@ -25,7 +27,7 @@ public class Node implements ChordNode {
     public Node (InetSocketAddress address) {
 
         localAddress = address;
-        localId = Helper.hashSocketAddress(localAddress);
+        localId = HashHelper.hashSocketAddress(localAddress);
 
         // initialize an empty finge table
         finger = new HashMap<Integer, InetSocketAddress>();
@@ -37,10 +39,10 @@ public class Node implements ChordNode {
         predecessor = null;
 
         // initialize threads
-        listener = new Listener(this);
+        listener = new RequestListener(this);
         stabilize = new Stabilize(this);
-        fixFingers = new FixFingers(this);
-        askPredecessor = new AskPredecessor(this);
+        fixFingers = new UpdateFingers(this);
+        askPredecessor = new PingPredecessor(this);
     }
 
     /**
@@ -55,7 +57,7 @@ public class Node implements ChordNode {
         // if contact is other node (join ring), try to contact that node
         // (contact will never be null)
         if (contact != null && !contact.equals(localAddress)) {
-            InetSocketAddress successor = Helper.requestAddress(contact, "FINDSUCC_" + localId);
+            InetSocketAddress successor = SocketAddrHelper.requestAddress(contact, "FINDSUCC_" + localId);
             if (successor == null)  {
                 System.out.println("\nCannot find node you are trying to contact. Please exit.\n");
                 return false;
@@ -64,8 +66,11 @@ public class Node implements ChordNode {
         }
 
         // start all threads
+
+        Thread t = new Thread(stabilize);
+        t.start();
         listener.start();
-        stabilize.start();
+        //stabilize.start();
         fixFingers.start();
         askPredecessor.start();
 
@@ -81,7 +86,7 @@ public class Node implements ChordNode {
     @Override
     public String notify(InetSocketAddress successor) {
         if (successor!=null && !successor.equals(localAddress))
-            return Helper.sendRequest(successor, "IAMPRE_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
+            return SocketAddrHelper.sendRequest(successor, "IAMPRE_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
         else
             return null;
     }
@@ -96,9 +101,9 @@ public class Node implements ChordNode {
             this.setPredecessor(newpre);
         }
         else {
-            long oldpre_id = Helper.hashSocketAddress(predecessor);
-            long local_relative_id = Helper.computeRelativeId(localId, oldpre_id);
-            long newpre_relative_id = Helper.computeRelativeId(Helper.hashSocketAddress(newpre), oldpre_id);
+            long oldpre_id = HashHelper.hashSocketAddress(predecessor);
+            long local_relative_id = HashHelper.getRelativeId(localId, oldpre_id);
+            long newpre_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(newpre), oldpre_id);
             if (newpre_relative_id > 0 && newpre_relative_id < local_relative_id)
                 this.setPredecessor(newpre);
         }
@@ -120,7 +125,7 @@ public class Node implements ChordNode {
 
         // if other node found, ask it for its successor
         if (!pre.equals(localAddress))
-            ret = Helper.requestAddress(pre, "YOURSUCC");
+            ret = SocketAddrHelper.requestAddress(pre, "YOURSUCC");
 
         // if ret is still null, set it as local node, return
         if (ret == null)
@@ -131,7 +136,7 @@ public class Node implements ChordNode {
 
     /**
      * Ask current node to find id's predecessor
-     * @param id
+     * @param findid
      * @return id's successor's socket address
      */
     private InetSocketAddress findPredecessor(long findid) {
@@ -140,8 +145,8 @@ public class Node implements ChordNode {
         InetSocketAddress most_recently_alive = this.localAddress;
         long n_successor_relative_id = 0;
         if (n_successor != null)
-            n_successor_relative_id = Helper.computeRelativeId(Helper.hashSocketAddress(n_successor), Helper.hashSocketAddress(n));
-        long findid_relative_id = Helper.computeRelativeId(findid, Helper.hashSocketAddress(n));
+            n_successor_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(n_successor), HashHelper.hashSocketAddress(n));
+        long findid_relative_id = HashHelper.getRelativeId(findid, HashHelper.hashSocketAddress(n));
 
         while (!(findid_relative_id > 0 && findid_relative_id <= n_successor_relative_id)) {
 
@@ -155,12 +160,12 @@ public class Node implements ChordNode {
 
             // else current node is remote node, sent request to it for its closest
             else {
-                InetSocketAddress result = Helper.requestAddress(n, "CLOSEST_" + findid);
+                InetSocketAddress result = SocketAddrHelper.requestAddress(n, "CLOSEST_" + findid);
 
                 // if fail to get response, set n to most recently
                 if (result == null) {
                     n = most_recently_alive;
-                    n_successor = Helper.requestAddress(n, "YOURSUCC");
+                    n_successor = SocketAddrHelper.requestAddress(n, "YOURSUCC");
                     if (n_successor==null) {
                         System.out.println("It's not possible.");
                         return localAddress;
@@ -177,20 +182,20 @@ public class Node implements ChordNode {
                     // set n as most recently alive
                     most_recently_alive = n;
                     // ask "result" for its successor
-                    n_successor = Helper.requestAddress(result, "YOURSUCC");
+                    n_successor = SocketAddrHelper.requestAddress(result, "YOURSUCC");
                     // if we can get its response, then "result" must be our next n
                     if (n_successor!=null) {
                         n = result;
                     }
                     // else n sticks, ask n's successor
                     else {
-                        n_successor = Helper.requestAddress(n, "YOURSUCC");
+                        n_successor = SocketAddrHelper.requestAddress(n, "YOURSUCC");
                     }
                 }
 
                 // compute relative ids for while loop judgement
-                n_successor_relative_id = Helper.computeRelativeId(Helper.hashSocketAddress(n_successor), Helper.hashSocketAddress(n));
-                findid_relative_id = Helper.computeRelativeId(findid, Helper.hashSocketAddress(n));
+                n_successor_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(n_successor), HashHelper.hashSocketAddress(n));
+                findid_relative_id = HashHelper.getRelativeId(findid, HashHelper.hashSocketAddress(n));
             }
             if (pre_n.equals(n))
                 break;
@@ -205,7 +210,7 @@ public class Node implements ChordNode {
      */
     @Override
     public InetSocketAddress findClosestPrecedingFinger(long findid) {
-        long findid_relative = Helper.computeRelativeId(findid, localId);
+        long findid_relative = HashHelper.getRelativeId(findid, localId);
 
         // check from last item in finger table
         for (int i = 32; i > 0; i--) {
@@ -213,12 +218,12 @@ public class Node implements ChordNode {
             if (ith_finger == null) {
                 continue;
             }
-            long ith_finger_id = Helper.hashSocketAddress(ith_finger);
-            long ith_finger_relative_id = Helper.computeRelativeId(ith_finger_id, localId);
+            long ith_finger_id = HashHelper.hashSocketAddress(ith_finger);
+            long ith_finger_relative_id = HashHelper.getRelativeId(ith_finger_id, localId);
 
             // if its relative id is the closest, check if its alive
             if (ith_finger_relative_id > 0 && ith_finger_relative_id < findid_relative)  {
-                String response  = Helper.sendRequest(ith_finger, "KEEP");
+                String response  = SocketAddrHelper.sendRequest(ith_finger, "KEEP");
 
                 //it is alive, return it
                 if (response!=null &&  response.equals("ALIVE")) {
@@ -319,7 +324,7 @@ public class Node implements ChordNode {
             InetSocketAddress p = predecessor;
             InetSocketAddress p_pre = null;
             while (true) {
-                p_pre = Helper.requestAddress(p, "YOURPRE");
+                p_pre = SocketAddrHelper.requestAddress(p, "YOURPRE");
                 if (p_pre == null)
                     break;
 
@@ -429,7 +434,7 @@ public class Node implements ChordNode {
     @Override
     public void printNeighbors() {
         System.out.println("\nYou are listening on port "+localAddress.getPort()+"."
-                + "\nYour position is "+Helper.hexIdAndPosition(localAddress)+".");
+                + "\nYour position is "+HashHelper.hexIdAndLocation(localAddress)+".");
         InetSocketAddress successor = finger.get(1);
 
         // if it cannot find both predecessor and successor
@@ -443,7 +448,7 @@ public class Node implements ChordNode {
         else {
             if (predecessor != null) {
                 System.out.println("Your predecessor is node "+predecessor.getAddress().toString()+", "
-                        + "port "+predecessor.getPort()+ ", position "+Helper.hexIdAndPosition(predecessor)+".");
+                        + "port "+predecessor.getPort()+ ", position "+HashHelper.hexIdAndLocation(predecessor)+".");
             }
             else {
                 System.out.println("Your predecessor is updating.");
@@ -451,7 +456,7 @@ public class Node implements ChordNode {
 
             if (successor != null) {
                 System.out.println("Your successor is node "+successor.getAddress().toString()+", "
-                        + "port "+successor.getPort()+ ", position "+Helper.hexIdAndPosition(successor)+".");
+                        + "port "+successor.getPort()+ ", position "+HashHelper.hexIdAndLocation(successor)+".");
             }
             else {
                 System.out.println("Your successor is updating.");
@@ -462,19 +467,19 @@ public class Node implements ChordNode {
     @Override
     public void printDataStructure() {
         System.out.println("\n==============================================================");
-        System.out.println("\nLOCAL:\t\t\t\t"+localAddress.toString()+"\t"+Helper.hexIdAndPosition(localAddress));
+        System.out.println("\nLOCAL:\t\t\t\t"+localAddress.toString()+"\t"+HashHelper.hexIdAndLocation(localAddress));
         if (predecessor != null)
-            System.out.println("\nPREDECESSOR:\t\t\t"+predecessor.toString()+"\t"+Helper.hexIdAndPosition(predecessor));
+            System.out.println("\nPREDECESSOR:\t\t\t"+predecessor.toString()+"\t"+HashHelper.hexIdAndLocation(predecessor));
         else
             System.out.println("\nPREDECESSOR:\t\t\tNULL");
         System.out.println("\nFINGER TABLE:\n");
         for (int i = 1; i <= 32; i++) {
-            long ithstart = Helper.ithStart(Helper.hashSocketAddress(localAddress),i);
+            long ithstart = HashHelper.ithInFingerTable(HashHelper.hashSocketAddress(localAddress),i);
             InetSocketAddress f = finger.get(i);
             StringBuilder sb = new StringBuilder();
-            sb.append(i+"\t"+ Helper.longTo8DigitHex(ithstart)+"\t\t");
+            sb.append(i+"\t"+ HashHelper.hexLongDigit(ithstart)+"\t\t");
             if (f!= null)
-                sb.append(f.toString()+"\t"+Helper.hexIdAndPosition(f));
+                sb.append(f.toString()+"\t"+HashHelper.hexIdAndLocation(f));
 
             else
                 sb.append("NULL");
@@ -489,7 +494,7 @@ public class Node implements ChordNode {
     @Override
     public void stopAllThreads() {
         if (listener != null)
-            listener.toDie();
+            listener.closeListener();
         if (fixFingers != null)
             fixFingers.toDie();
         if (stabilize != null)

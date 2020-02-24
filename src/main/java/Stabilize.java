@@ -14,7 +14,7 @@ import util.SocketAddrHelper;
  *
  */
 
-public class Stabilize extends Thread implements Stabilizeable {
+public class Stabilize implements Stabilizeable {
 
     private ChordNode local;
     private boolean alive;
@@ -30,7 +30,9 @@ public class Stabilize extends Thread implements Stabilizeable {
         long x_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(newSucc),local_id);
         if (x_relative_id>0 && x_relative_id < successor_relative_id) {
             local.updateFingers(1,newSucc);
+            return true;
         }
+        return false;
     }
 
     @Override

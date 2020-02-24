@@ -8,7 +8,7 @@ import java.net.InetSocketAddress;
  * @author Jiabei Luo
  */
 
-public interface Stabilizeable {
+public interface Stabilizeable extends Runnable {
 
     /**
      * Check if the current successor of the local node has been deleted or changed. If so, update the local node's finger table.
@@ -24,4 +24,7 @@ public interface Stabilizeable {
      * @return true if newSucc's relative id is greater than 0 and less than oldSucc
      */
     boolean isNewSuccessor(long local_id, InetSocketAddress newSucc, InetSocketAddress oldSucc);
+
+    void toDie();
+
 }
