@@ -27,7 +27,7 @@ public final class HashHelper {
     private static void initialize() {
         powerOfTwo = new HashMap<>();
         powerOfTwo.put(0, 1l);
-        for (int i = 0; i <= 32; i++) {
+        for (int i = 1; i <= 32; i++) {
             powerOfTwo.put(i, powerOfTwo.get(i - 1) * 2);
         }
     }

@@ -35,7 +35,7 @@ public final class SocketAddrHelper {
             return null;
         }
         // server cannot find anything, return server itself
-        else if (response.startsWith("NOTHING")) {
+        else if (response.startsWith("NULL")) {
             return server;
         }
         // server get response, and create socket
