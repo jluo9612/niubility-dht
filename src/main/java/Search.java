@@ -1,4 +1,6 @@
 import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+import util.HashHelper;
+import util.SocketAddrHelper;
 
 import java.net.InetSocketAddress;
 import java.util.Scanner;
@@ -19,14 +21,14 @@ public class Search {
         }
         //check user input
 
-        localSocketAddress = Helper.createSocketAddress(args[0] + ":" + args[1]);
+        localSocketAddress = SocketAddrHelper.createSocketAddress(args[0] + ":" + args[1]);
         if (localSocketAddress == null) {
             System.out.println("*****************");
             System.out.println("Invalid connect address T.T System exited.");
             System.exit(0);
         }
         //send socket address of the node being searched, and check if its status
-        String response = Helper.sendRequest(localSocketAddress, "KEEP");
+        String response = SocketAddrHelper.sendRequest(localSocketAddress, "KEEP");
 
         //node status is negative
         if (response == null || !response.equals("ALIVE")) {
@@ -39,12 +41,12 @@ public class Search {
         System.out.println("*****************");
         System.out.println("Successfully connected to node address: " + localSocketAddress.getAddress().toString());
         System.out.println("port: " + localSocketAddress.getPort());
-        System.out.println("position: " + Helper.hexIdAndPosition(localSocketAddress));
+        System.out.println("position: " + HashHelper.hexIdAndLocation(localSocketAddress));
 
 
         //check the stability of system by getting predecessor and successor
-        InetSocketAddress predecessorAddress = Helper.requestAddress(localSocketAddress, "YOURPRE");
-        InetSocketAddress successorAddress = Helper.requestAddress(localSocketAddress, "YOURSUCC");
+        InetSocketAddress predecessorAddress = SocketAddrHelper.requestAddress(localSocketAddress, "YOURPRE");
+        InetSocketAddress successorAddress = SocketAddrHelper.requestAddress(localSocketAddress, "YOURSUCC");
 
         if (predecessorAddress == null || successorAddress == null) {
             System.out.println("*****************");
@@ -59,8 +61,8 @@ public class Search {
                 || (predecessorAddress.equals(localSocketAddress) && !successorAddress.equals(localSocketAddress))) {
             System.out.println("*****************");
             System.out.println("Searching...just 2 seconds ^^");
-            predecessorAddress = Helper.requestAddress(localSocketAddress, "YOURPRE");
-            successorAddress = Helper.requestAddress(localSocketAddress, "YOURSUCC");
+            predecessorAddress = SocketAddrHelper.requestAddress(localSocketAddress, "YOURPRE");
+            successorAddress = SocketAddrHelper.requestAddress(localSocketAddress, "YOURSUCC");
 
             if (predecessorAddress == null || successorAddress == null) {
                 System.out.println("*****************");
@@ -87,9 +89,9 @@ public class Search {
                 }
                 //search target node
                 else if (userCommand.length() > 0) {
-                    long hash = Helper.hashString(userCommand);
+                    long hash = HashHelper.hashString(userCommand);
                     System.out.println("User command hash is: " + Long.toHexString(hash));
-                    InetSocketAddress result = Helper.requestAddress(localSocketAddress, "FINDSUCC_"+hash);
+                    InetSocketAddress result = SocketAddrHelper.requestAddress(localSocketAddress, "FINDSUCC_"+hash);
 
                     if (result == null) {
                         System.out.println("*****************");
@@ -99,11 +101,11 @@ public class Search {
                     System.out.println("*****************");
                     System.out.println("Response from node IP address: " + localSocketAddress.getAddress().toString());
                     System.out.println("port: " + localSocketAddress.getPort());
-                    System.out.println("position: " + Helper.hexIdAndPosition(localSocketAddress));
+                    System.out.println("position: " + HashHelper.hexIdAndLocation(localSocketAddress));
                     System.out.println("==================");
                     System.out.println("Target node IP address: " + result.getAddress().toString());
                     System.out.println("port: " + result.getPort());
-                    System.out.println("position: " + Helper.hexIdAndPosition(result));
+                    System.out.println("position: " + HashHelper.hexIdAndLocation(result));
                 }
             }
         }

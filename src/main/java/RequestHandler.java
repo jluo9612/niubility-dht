@@ -1,4 +1,6 @@
 import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+import util.HashHelper;
+import util.SocketAddrHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -24,7 +26,7 @@ public class RequestHandler implements Runnable{
     public void run() {
         try {
             InputStream input = clientSocket.getInputStream();
-            String request = Helper.inputStreamToString(input);
+            String request = SocketAddrHelper.readInputStream(input);
             String response = process(request);
             if (request != null) {
                 OutputStream output = clientSocket.getOutputStream();
@@ -46,7 +48,7 @@ public class RequestHandler implements Runnable{
         }
         //get successor
         if (request.startsWith("YOURSUCC")) {
-            response = localNode.getSuccessor();
+            result = localNode.getSuccessor();
             if (result != null) {
                 response = buildResponse(result, "MYSUCC_");
             } else {
@@ -65,18 +67,18 @@ public class RequestHandler implements Runnable{
         //find successor
         else if (request.startsWith("FINDSUCC")) {
             long key = Long.parseLong(request.split("_")[1]);
-            result = localNode.find_successor(key);
+            result = localNode.findSuccessor(key);
             response = buildResponse(result, "FOUNDSUCC_");
         }
         //get closest node
         else if (request.startsWith("CLOSEST")) {
             long key = Long.parseLong(request.split("_")[1]);
-            result = localNode.closest_preceding_finger(key);
+            result = localNode.findClosestPrecedingFinger(key);
             response = buildResponse(result, "MYCLOSEST_");
         }
         //claim as predecessor
         else if (request.startsWith("IAMPRE")) {
-            InetSocketAddress newPredecessor = Helper.createSocketAddress(request.split("_")[1]);
+            InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
             localNode.notified(newPredecessor);
             response = "NOTIFIED";
         }

@@ -18,7 +18,7 @@ public class RequestListener extends Thread{
         localNode = node;
         status = true;
         InetSocketAddress localSocketAddress = localNode.getAddress();
-        int port = localIpAddress.getPort();
+        int port = localSocketAddress.getPort();
 
         //open socket
         try {
@@ -40,7 +40,7 @@ public class RequestListener extends Thread{
                 throw new RuntimeException("Cannot accept connection T.T", e);
             }
             //start a new thread for request handler
-            new Thread(new RequestHandler(clientSocket, localNode).start);
+            new Thread(new RequestHandler(clientSocket, localNode)).start();
         }
     }
 

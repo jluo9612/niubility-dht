@@ -1,6 +1,8 @@
 import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+import util.SocketAddrHelper;
 
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.UnknownHostException;
 import java.util.Scanner;
 
@@ -10,7 +12,7 @@ import java.util.Scanner;
  * or it joins an existing chord ring
  */
 public class Chord {
-    private static InetAddress connectAddress;
+    private static InetSocketAddress connectAddress;
     private static Helper helper;
     private static Node newNode;
     public static void main(String[] args) {
@@ -24,7 +26,7 @@ public class Chord {
         }
 
         //create new chord node
-        newNode = new Node(Helper.createSocketAddress(localIpAddress + ":" + args[0]));
+        newNode = new Node(SocketAddrHelper.createSocketAddress(localIpAddress + ":" + args[0]));
 
         //create a new chord ring
         if (args.length == 1) {
@@ -33,7 +35,7 @@ public class Chord {
 
         //join an existing chord ring
         else if (args.length == 3) {
-            connectAddress = Helper.createSocketAddress(args[1] + ":" + args[2]);
+            connectAddress = SocketAddrHelper.createSocketAddress(args[1] + ":" + args[2]);
             //invalid connect address
             if (connectAddress == null) {
                 System.out.println("Invalid connect address T.T System exited.");
