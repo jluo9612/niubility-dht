@@ -25,6 +25,8 @@ public interface ChordNode {
      */
     void notified(InetSocketAddress newpre);
 
+    void beAllowed(InetSocketAddress newSucc);
+
     /**
      * Ask current node to find id's successor.
      * @param id
@@ -78,4 +80,9 @@ public interface ChordNode {
      * Stop this node's all threads.
      */
     void stopAllThreads();
+
+    String getJoinState();
+
+    boolean isLocked();
+
 }

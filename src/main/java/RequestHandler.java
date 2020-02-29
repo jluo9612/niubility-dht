@@ -79,11 +79,27 @@ public class RequestHandler implements Runnable{
         //claim as predecessor
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            while(localNode.isLocked()) {
+                System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked");
+            }
             localNode.notified(newPredecessor);
             response = "NOTIFIED";
         }
         else if (request.startsWith("KEEP")) {
             response = "ALIVE";
+        }
+        else if (request.startsWith("ISLOCKED")) {
+            if (localNode.isLocked()) {
+                response = "LOCKED";
+            } else {
+                response = "UNLOCKED";
+
+            }
+        }
+        else if (request.startsWith("YOUCANJOIN")) {
+            InetSocketAddress newSuccessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.beAllowed(newSuccessor);
+            response = "BEALLOWED";
         }
         return response;
     }

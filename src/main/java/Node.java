@@ -19,6 +19,8 @@ public class Node implements ChordNode {
     private Stabilizeable stabilize;
     private UpdateFingers fixFingers;
     private PingPredecessor askPredecessor;
+    private String joinState;
+    private boolean isLocked;
 
     /**
      * Constructor
@@ -43,6 +45,7 @@ public class Node implements ChordNode {
         stabilize = new Stabilize(this);
         fixFingers = new UpdateFingers(this);
         askPredecessor = new PingPredecessor(this);
+        listener.start();
     }
 
     /**
@@ -56,20 +59,22 @@ public class Node implements ChordNode {
 
         // if contact is other node (join ring), try to contact that node
         // (contact will never be null)
+
         if (contact != null && !contact.equals(localAddress)) {
+            lock();
             InetSocketAddress successor = SocketAddrHelper.requestAddress(contact, "FINDSUCC_" + localId);
             if (successor == null)  {
                 System.out.println("\nCannot find node you are trying to contact. Please exit.\n");
                 return false;
             }
-            updateIthFinger(1, successor);
+            notify(successor);
+            unlock();
         }
 
         // start all threads
 
         Thread t = new Thread(stabilize);
         t.start();
-        listener.start();
         //stabilize.start();
         fixFingers.start();
         askPredecessor.start();
@@ -97,6 +102,7 @@ public class Node implements ChordNode {
      */
     @Override
     public void notified(InetSocketAddress newpre) {
+        lock();
         if (predecessor == null || predecessor.equals(localAddress)) {
             this.setPredecessor(newpre);
         }
@@ -107,6 +113,13 @@ public class Node implements ChordNode {
             if (newpre_relative_id > 0 && newpre_relative_id < local_relative_id)
                 this.setPredecessor(newpre);
         }
+        SocketAddrHelper.sendRequest(newpre, "YOUCANJOIN_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
+        unlock();
+    }
+
+    @Override
+    public void beAllowed(InetSocketAddress newSucc) {
+        finger.put(1, newSucc);
     }
 
     /**
@@ -280,10 +293,6 @@ public class Node implements ChordNode {
     private void updateIthFinger(int i, InetSocketAddress value) {
         finger.put(i, value);
 
-        // if the updated one is successor, notify the new successor
-        if (i == 1 && value != null && !value.equals(localAddress)) {
-            notify(value);
-        }
     }
 
     /**
@@ -503,4 +512,21 @@ public class Node implements ChordNode {
             askPredecessor.toDie();
     }
 
+    @Override
+    public String getJoinState() {
+        return joinState;
+    }
+
+    @Override
+    public boolean isLocked() {
+        return isLocked;
+    }
+
+    private void lock() {
+        isLocked = true;
+    }
+
+    private void unlock() {
+        isLocked = false;
+    }
 }

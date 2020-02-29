@@ -25,6 +25,11 @@ public class LeaderNode implements ChordNode{
     }
 
     @Override
+    public void beAllowed(InetSocketAddress newSucc) {
+
+    }
+
+    @Override
     public InetSocketAddress findSuccessor(long id) {
         return null;
     }
@@ -77,5 +82,15 @@ public class LeaderNode implements ChordNode{
     @Override
     public void stopAllThreads() {
 
+    }
+
+    @Override
+    public String getJoinState() {
+        return null;
+    }
+
+    @Override
+    public boolean isLocked() {
+        return false;
     }
 }

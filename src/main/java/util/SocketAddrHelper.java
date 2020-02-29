@@ -155,7 +155,8 @@ public final class SocketAddrHelper {
         try {
             line = reader.readLine();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Cannot read line from input stream.");
+            return null;
         }
 
         return line;
