@@ -25,7 +25,9 @@ public interface ChordNode {
      */
     void notified(InetSocketAddress newpre);
 
-    void beAllowed(InetSocketAddress newSucc);
+    void joinAndHint(InetSocketAddress newSucc, InetSocketAddress oldPredOfSucc);
+
+    void hinted(InetSocketAddress successor);
 
     /**
      * Ask current node to find id's successor.

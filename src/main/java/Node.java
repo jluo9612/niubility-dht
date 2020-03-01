@@ -7,6 +7,9 @@ import interfaces.Stabilizeable;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static java.lang.Thread.sleep;
 
 public class Node implements ChordNode {
 
@@ -21,6 +24,7 @@ public class Node implements ChordNode {
     private PingPredecessor askPredecessor;
     private String joinState;
     private boolean isLocked;
+    private ReentrantLock mutex;
 
     /**
      * Constructor
@@ -28,6 +32,7 @@ public class Node implements ChordNode {
      */
     public Node (InetSocketAddress address) {
 
+        mutex = new ReentrantLock();
         localAddress = address;
         localId = HashHelper.hashSocketAddress(localAddress);
 
@@ -61,21 +66,20 @@ public class Node implements ChordNode {
         // (contact will never be null)
 
         if (contact != null && !contact.equals(localAddress)) {
-            lock();
+            mutex.lock();
             InetSocketAddress successor = SocketAddrHelper.requestAddress(contact, "FINDSUCC_" + localId);
             if (successor == null)  {
                 System.out.println("\nCannot find node you are trying to contact. Please exit.\n");
                 return false;
             }
             notify(successor);
-            unlock();
+            mutex.unlock();
         }
 
         // start all threads
 
         Thread t = new Thread(stabilize);
         t.start();
-        //stabilize.start();
         fixFingers.start();
         askPredecessor.start();
 
@@ -102,7 +106,8 @@ public class Node implements ChordNode {
      */
     @Override
     public void notified(InetSocketAddress newpre) {
-        lock();
+        mutex.lock();
+        InetSocketAddress oldPredecessor = predecessor;
         if (predecessor == null || predecessor.equals(localAddress)) {
             this.setPredecessor(newpre);
         }
@@ -113,13 +118,35 @@ public class Node implements ChordNode {
             if (newpre_relative_id > 0 && newpre_relative_id < local_relative_id)
                 this.setPredecessor(newpre);
         }
-        SocketAddrHelper.sendRequest(newpre, "YOUCANJOIN_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
-        unlock();
+
+        String req = "YOUCANJOIN_"+localAddress.getAddress().toString()+":"+localAddress.getPort();
+        if (oldPredecessor != null && !oldPredecessor.equals(localAddress)) {
+            req += "_"+oldPredecessor.getAddress().toString()+":"+oldPredecessor.getPort();
+        }
+        SocketAddrHelper.sendRequest(newpre, req);
+//        try {
+//            sleep(20000);
+//        } catch (InterruptedException e) {
+//            e.printStackTrace();
+//        }
+        mutex.unlock();
     }
 
     @Override
-    public void beAllowed(InetSocketAddress newSucc) {
-        finger.put(1, newSucc);
+    public void joinAndHint(InetSocketAddress newSucc, InetSocketAddress oldPredOfSucc) {
+        updateIthFinger(1, newSucc);
+        if (oldPredOfSucc != null) {
+            setPredecessor(oldPredOfSucc);
+            SocketAddrHelper.sendRequest(oldPredOfSucc, "IAMNEWSUCC_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
+        } else {
+            setPredecessor(newSucc);
+        }
+    }
+
+    @Override
+    public void hinted(InetSocketAddress successor) {
+
+        updateIthFinger(1, successor);
     }
 
     /**
@@ -477,6 +504,12 @@ public class Node implements ChordNode {
     public void printDataStructure() {
         System.out.println("\n==============================================================");
         System.out.println("\nLOCAL:\t\t\t\t"+localAddress.toString()+"\t"+HashHelper.hexIdAndLocation(localAddress));
+        System.out.println("Is Locked?");
+        if(mutex.isLocked()) {
+            System.out.println("YES");
+        }else {
+            System.out.println("NO");
+        }
         if (predecessor != null)
             System.out.println("\nPREDECESSOR:\t\t\t"+predecessor.toString()+"\t"+HashHelper.hexIdAndLocation(predecessor));
         else
@@ -519,7 +552,7 @@ public class Node implements ChordNode {
 
     @Override
     public boolean isLocked() {
-        return isLocked;
+        return mutex.isLocked();
     }
 
     private void lock() {

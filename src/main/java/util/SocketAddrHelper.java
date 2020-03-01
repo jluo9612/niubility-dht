@@ -57,9 +57,6 @@ public final class SocketAddrHelper {
         if (server == null || req == null) {
             return null;
         }
-
-
-
         // Create a talkSocket to output request to server's socket
         // return null if fail
         Socket talkSocket = null;
@@ -68,7 +65,6 @@ public final class SocketAddrHelper {
             PrintStream output = new PrintStream(talkSocket.getOutputStream());
             output.println(req);
         } catch (IOException e) {
-            e.printStackTrace();
             return null;
         }
 
@@ -84,7 +80,7 @@ public final class SocketAddrHelper {
         try {
             input = talkSocket.getInputStream();
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Cannot get input stream from "+server.toString()+"\nRequest is: "+req+"\n");
         }
         String response = readInputStream(input);
 
@@ -92,7 +88,8 @@ public final class SocketAddrHelper {
         try {
             talkSocket.close();
         } catch (IOException e) {
-            e.printStackTrace();
+            throw new RuntimeException(
+                    "Cannot close socket", e);
         }
 
         return response;
@@ -127,7 +124,7 @@ public final class SocketAddrHelper {
             try {
                 socketIP = InetAddress.getByName(ip);
             } catch (UnknownHostException e) {
-                e.printStackTrace();
+                System.out.println("Cannot create ip address: "+ip);
                 return null;
             }
             // combine ip and port

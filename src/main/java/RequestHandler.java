@@ -9,6 +9,8 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
+import static java.lang.Thread.sleep;
+
 /**
  * RequestHandler class processes requests sent by RequestListener
  * and writes responses back
@@ -80,8 +82,14 @@ public class RequestHandler implements Runnable{
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
             while(localNode.isLocked()) {
-                System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked");
+                try {
+                    sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked from:" + newPredecessor.toString());
             }
+            //System.out.println("unlocked at port:"+localNode.getAddress().getPort());
             localNode.notified(newPredecessor);
             response = "NOTIFIED";
         }
@@ -97,9 +105,19 @@ public class RequestHandler implements Runnable{
             }
         }
         else if (request.startsWith("YOUCANJOIN")) {
-            InetSocketAddress newSuccessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
-            localNode.beAllowed(newSuccessor);
+            String[] IPAddress = request.split("_");
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(IPAddress[1]);
+            InetSocketAddress oldPredOfSucc = null;
+            if (IPAddress.length > 2) {
+                oldPredOfSucc = SocketAddrHelper.createSocketAddress(IPAddress[2]);
+            }
+            localNode.joinAndHint(successor, oldPredOfSucc);
             response = "BEALLOWED";
+        }
+        else if (request.startsWith("IAMNEWSUCC")) {
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.hinted(successor);
+            response = "HINTED";
         }
         return response;
     }

@@ -25,7 +25,12 @@ public class LeaderNode implements ChordNode{
     }
 
     @Override
-    public void beAllowed(InetSocketAddress newSucc) {
+    public void joinAndHint(InetSocketAddress newSucc, InetSocketAddress oldPredOfSucc) {
+
+    }
+
+    @Override
+    public void hinted(InetSocketAddress successor) {
 
     }
 
