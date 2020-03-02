@@ -20,8 +20,8 @@ public class Node implements ChordNode {
 
     private RequestListener listener;
     private Stabilizeable stabilize;
-    private UpdateFingers fixFingers;
-    private PingPredecessor askPredecessor;
+    private UpdateFingers updateFingers;
+    private PingPredecessor pingPredecessor;
     private String joinState;
     private boolean isLocked;
     private ReentrantLock mutex;
@@ -48,8 +48,8 @@ public class Node implements ChordNode {
         // initialize threads
         listener = new RequestListener(this);
         stabilize = new Stabilize(this);
-        fixFingers = new UpdateFingers(this);
-        askPredecessor = new PingPredecessor(this);
+        updateFingers = new UpdateFingers(this);
+        pingPredecessor = new PingPredecessor(this);
         listener.start();
     }
 
@@ -68,6 +68,7 @@ public class Node implements ChordNode {
         if (contact != null && !contact.equals(localAddress)) {
             mutex.lock();
             InetSocketAddress successor = SocketAddrHelper.requestAddress(contact, "FINDSUCC_" + localId);
+            System.out.println("My successor is : " + successor.toString());
             if (successor == null)  {
                 System.out.println("\nCannot find node you are trying to contact. Please exit.\n");
                 return false;
@@ -78,10 +79,11 @@ public class Node implements ChordNode {
 
         // start all threads
 
+        //You may want to comment following lines to test mutext fucntionality.
         Thread t = new Thread(stabilize);
         t.start();
-        fixFingers.start();
-        askPredecessor.start();
+        updateFingers.start();
+        pingPredecessor.start();
 
         return true;
     }
@@ -108,6 +110,9 @@ public class Node implements ChordNode {
     public void notified(InetSocketAddress newpre) {
         mutex.lock();
         InetSocketAddress oldPredecessor = predecessor;
+        if (getSuccessor() == null || getSuccessor().equals(localAddress)) {
+            updateIthFinger(1, newpre);
+        }
         if (predecessor == null || predecessor.equals(localAddress)) {
             this.setPredecessor(newpre);
         }
@@ -164,8 +169,9 @@ public class Node implements ChordNode {
         InetSocketAddress pre = findPredecessor(id);
 
         // if other node found, ask it for its successor
-        if (!pre.equals(localAddress))
+        if (!pre.equals(localAddress)) {
             ret = SocketAddrHelper.requestAddress(pre, "YOURSUCC");
+        }
 
         // if ret is still null, set it as local node, return
         if (ret == null)
@@ -537,12 +543,12 @@ public class Node implements ChordNode {
     public void stopAllThreads() {
         if (listener != null)
             listener.closeListener();
-        if (fixFingers != null)
-            fixFingers.toDie();
+        if (updateFingers != null)
+            updateFingers.toDie();
         if (stabilize != null)
             stabilize.toDie();
-        if (askPredecessor != null)
-            askPredecessor.toDie();
+        if (pingPredecessor != null)
+            pingPredecessor.toDie();
     }
 
     @Override

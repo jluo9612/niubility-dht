@@ -37,14 +37,15 @@ public class Stabilize implements Stabilizeable {
 
     @Override
     public void checkAndUpdate(InetSocketAddress successor) {
-        long local_id = HashHelper.hashSocketAddress(local.getAddress());
+        InetSocketAddress localAddr = local.getAddress();
+        long local_id = HashHelper.hashSocketAddress(localAddr);
 
-        if (successor == null || successor.equals(local_id)) { //successor exited
+        if (successor == null || successor.equals(localAddr)) { //successor exited
             local.updateFingers(-3, null); //fill
         }
 
         // successor = local.getSuccessor();
-        if (successor != null && !successor.equals(local_id)) { // C
+        if (successor != null && !successor.equals(localAddr)) { // C
 
             // checkNewSuccessor
             // try to get my successor's predecessor
