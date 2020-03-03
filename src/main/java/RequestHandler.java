@@ -82,11 +82,11 @@ public class RequestHandler implements Runnable{
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
             while(localNode.isLocked()) {
-                try {
-                    sleep(500);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
+//                try {
+//                    sleep(500);
+//                } catch (InterruptedException e) {
+//                    e.printStackTrace();
+//                }
                 System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked from:" + newPredecessor.toString());
             }
             //System.out.println("unlocked at port:"+localNode.getAddress().getPort());
@@ -118,6 +118,11 @@ public class RequestHandler implements Runnable{
             InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
             localNode.hinted(successor);
             response = "HINTED";
+        }
+        else if (request.startsWith("YOUAREMYSUCC")) {
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.updateNewPre(successor);
+            response = "UPDATED";
         }
         return response;
     }

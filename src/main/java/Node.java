@@ -111,7 +111,7 @@ public class Node implements ChordNode {
         mutex.lock();
         InetSocketAddress oldPredecessor = predecessor;
         if (getSuccessor() == null || getSuccessor().equals(localAddress)) {
-            updateIthFinger(1, newpre);
+            finger.put(1, newpre);
         }
         if (predecessor == null || predecessor.equals(localAddress)) {
             this.setPredecessor(newpre);
@@ -139,7 +139,7 @@ public class Node implements ChordNode {
 
     @Override
     public void joinAndHint(InetSocketAddress newSucc, InetSocketAddress oldPredOfSucc) {
-        updateIthFinger(1, newSucc);
+        finger.put(1, newSucc);
         if (oldPredOfSucc != null) {
             setPredecessor(oldPredOfSucc);
             SocketAddrHelper.sendRequest(oldPredOfSucc, "IAMNEWSUCC_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
@@ -151,8 +151,29 @@ public class Node implements ChordNode {
     @Override
     public void hinted(InetSocketAddress successor) {
 
-        updateIthFinger(1, successor);
+        finger.put(1, successor);
     }
+
+    public String setNewSucc(InetSocketAddress successor) {
+        if (successor!=null && !successor.equals(localAddress))
+            return SocketAddrHelper.sendRequest(successor, "YOUAREMYSUCC_"+localAddress.getAddress().toString()+":"+localAddress.getPort());
+        else
+            return null;
+    }
+
+    public void updateNewPre(InetSocketAddress predecessor) {
+        if (predecessor == null || predecessor.equals(localAddress)) {
+            this.setPredecessor(predecessor);
+        }
+        else {
+            long oldpre_id = HashHelper.hashSocketAddress(predecessor);
+            long local_relative_id = HashHelper.getRelativeId(localId, oldpre_id);
+            long newpre_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(predecessor), oldpre_id);
+            if (newpre_relative_id > 0 && newpre_relative_id < local_relative_id)
+                this.setPredecessor(predecessor);
+        }
+    }
+
 
     /**
      * Ask current node to find id's successor.
@@ -325,6 +346,10 @@ public class Node implements ChordNode {
      */
     private void updateIthFinger(int i, InetSocketAddress value) {
         finger.put(i, value);
+
+        if (i == 1 && value != null && !value.equals(localAddress)) {
+            setNewSucc(value);
+        }
 
     }
 
