@@ -1,3 +1,4 @@
+//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 import util.SocketAddrHelper;
 
@@ -13,10 +14,10 @@ import java.util.Scanner;
  */
 public class Chord {
     private static InetSocketAddress connectAddress;
-    private static Helper helper;
+//    private static Helper helper;
     private static Node newNode;
     public static void main(String[] args) {
-        helper = new Helper();
+//        helper = new Helper();
         String localIpAddress = "";
         //get local IP address
         try {

@@ -23,6 +23,7 @@ public class Node implements ChordNode {
     private HashMap<Integer, InetSocketAddress> finger;
     private Map<String, String> dataStore = new HashMap<>();
 
+
     private RequestListener listener;
     private Stabilizeable stabilize;
     private UpdateFingers updateFingers;

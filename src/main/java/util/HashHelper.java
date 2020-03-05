@@ -1,6 +1,6 @@
 package util;
 
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
