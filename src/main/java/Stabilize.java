@@ -53,8 +53,7 @@ public class Stabilize implements Stabilizeable {
         // loop through data map entries of this node
         Map<String, String> map = local.getDataStore();
 
-        for (Map.Entry<String, String> entry : map) {
-            // get entry!!!!!!!!!!
+        for (Map.Entry<String, String> entry : map.getEntrySet()) {
             try {
                 String dataKey = entry.getKey();
                 String dataValue = entry.getValue();
@@ -168,8 +167,7 @@ public class Stabilize implements Stabilizeable {
     private void replicateToSuccessor(InetSocketAddress address, String key, String value) {
 
         try {
-            // !!!!!!
-            SocketAddrHelper.sendRequest(address,DHTMain.PUT_REPLICA + ":" + address + ":" + key + ":" + value);
+            SocketAddrHelper.sendRequest(address,"PUTREPLICA_" + key + ":" + value);
         } catch (Exception ex) {
             System.err.println("Error from replicateToSuccessor():" + ex.getMessage() + " when connecting to " + address);
         }
@@ -190,8 +188,8 @@ public class Stabilize implements Stabilizeable {
             local.updateFingers(-3, null);
         }
 
-        // successor = local.getSuccessor();
-        if (successor != null && !successor.equals(localAddr)) {
+        successor = local.getSuccessor1();
+        if (successor != null && !successor.equals(localAddr)) { 
 
             // checkNewSuccessor
             // try to get my successor's predecessor
@@ -204,14 +202,18 @@ public class Stabilize implements Stabilizeable {
 
             // else if successor's predecessor is not equal to local
             else if (!x.equals(successor)) {
-                if (isNewSuccessor(local_id, x, successor)) {
+                long local_id = HashHelper.hashSocketAddress(localAddr);
+                long successor_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(successor), local_id);
+                long x_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(x),local_id);
+                if (x_relative_id>0 && x_relative_id < successor_relative_id) {
                     local.updateFingers(1,x);
                 }
+
             }
 
             // successor's predecessor is successor itself, then notify successor
             else {
-                local.notify(successor);
+                local.setNewSucc(successor);
             }
         }
     }

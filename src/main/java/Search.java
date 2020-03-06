@@ -1,4 +1,4 @@
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 import util.HashHelper;
 import util.SocketAddrHelper;
 
@@ -11,10 +11,10 @@ import java.util.stream.Stream;
  */
 public class Search {
     private static InetSocketAddress localSocketAddress;
-    private static Helper helper;
+//    private static Helper helper;
 
     public static void main(String[] args) {
-        helper = new Helper();
+//        helper = new Helper();
         if (args.length != 2) {
             System.out.println("Invalid input O.O System exited.");
             System.exit(0);

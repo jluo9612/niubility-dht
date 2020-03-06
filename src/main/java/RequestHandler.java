@@ -1,13 +1,18 @@
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+
+//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 import util.HashHelper;
+
 import util.SocketAddrHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+import java.util.Iterator;
+import java.util.Map;
+
+import static java.lang.Thread.sleep;
 
 /**
  * RequestHandler class processes requests sent by RequestListener
@@ -48,7 +53,7 @@ public class RequestHandler implements Runnable{
         }
         //get successor
         if (request.startsWith("YOURSUCC")) {
-            result = localNode.getSuccessor();
+            result = localNode.getSuccessor1();
             if (result != null) {
                 response = buildResponse(result, "MYSUCC_");
             } else {
@@ -57,7 +62,7 @@ public class RequestHandler implements Runnable{
         }
         //get predecessor
         else if (request.startsWith("YOURPRE")) {
-            result = localNode.getPredecessor();
+            result = localNode.getPredecessor1();
             if (result != null) {
                 response = buildResponse(result, "MYPRE_");
             } else {
@@ -79,12 +84,72 @@ public class RequestHandler implements Runnable{
         //claim as predecessor
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            while(localNode.isLocked()) {
+                try {
+                    sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked from:" + newPredecessor.toString());
+            }
+            //System.out.println("unlocked at port:"+localNode.getAddress().getPort());
             localNode.notified(newPredecessor);
             response = "NOTIFIED";
         }
         else if (request.startsWith("KEEP")) {
             response = "ALIVE";
         }
+
+        else if (request.startsWith("ISLOCKED")) {
+            if (localNode.isLocked()) {
+                response = "LOCKED";
+            } else {
+                response = "UNLOCKED";
+
+            }
+        }
+        else if (request.startsWith("YOUCANJOIN")) {
+            String[] IPAddress = request.split("_");
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(IPAddress[1]);
+            InetSocketAddress oldPredOfSucc = null;
+            if (IPAddress.length > 2) {
+                oldPredOfSucc = SocketAddrHelper.createSocketAddress(IPAddress[2]);
+            }
+            localNode.joinAndHint(successor, oldPredOfSucc);
+            response = "BEALLOWED";
+        }
+        else if (request.startsWith("IAMNEWSUCC")) {
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.hinted(successor);
+            response = "HINTED";
+        }
+        else if (request.startsWith("YOUAREMYSUCC")) {
+            InetSocketAddress predecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.updateNewPre(predecessor);
+            response = "UPDATED";
+        }
+
+        // load data
+        else if (request.startsWith("PUTVALUE")) {
+            String data = request.split("_")[1];
+            response = putValue(data);
+        }
+        // search value
+        else if (request.startsWith("GETVALUE")) {
+            String key = request.split("_")[1];
+            response = getValue(key);
+        }
+
+
+        else if (request.startsWith("FINDNODE")) {
+            //based on query format, might need to be changed
+            //supposed to be query key
+            response = findNode(SocketAddrHelper.createSocketAddress(request.split("_")[1]));
+        }
+        else if (request.startsWith("REQUESTKEYVALUES")) {
+            response = requestKeyValues(SocketAddrHelper.createSocketAddress(request.split("_")[1]));
+        }
+
         return response;
     }
 
@@ -99,4 +164,209 @@ public class RequestHandler implements Runnable{
         int port = result.getPort();
         return prefix + ipAddress + ":" + port;
     }
+
+
+    /**
+     * get value from node's datastore
+     * @param key search key
+     * @return search result, and position of node
+     */
+    private String getValue(String key) {
+        String response = "Data Not Found, please try again...";
+        long keyHash = HashHelper.hashString(key);
+        String value = null;
+        
+        // if the query is between predecessor and local node
+        // try to get value in local node
+        if (isThisMyNode(keyHash)) {
+            System.out.println("Located the node: " + localNode.getId());
+            value = localNode.getDataStore().get(key);
+            if (value != null) {
+                response = "Found the value: " + value + ", on the node: " + localNode.getId() + ", IP: " + 
+                    localNode.getAddress().getAddress() + ":" + localNode.getAddress().getPort();
+            }
+        }
+        // if the query is between local node and successor, 
+        // try to get value in successor
+        else if (isThisNextNode(keyHash)) {
+            response = SocketAddrHelper.sendRequest(localNode.getSuccessor1(), "GETVALUE_" + data);
+        }
+        // search the correct node by finger table
+        else {
+            InetSocketAddress chordNode = localNode.findClosestPrecedingFinger(keyHash);
+            System.out.println("Searching node on chord to get value");
+            response = SocketAddrHelper.sendRequest(chordNode, "GETVALUE_" + data);
+        }
+
+        return response;
+    }
+
+    /**
+     * load data in node's datastore
+     * @param data combined key and value
+     * @return position of node
+     */
+    private String putValue(String data) {
+        // split data to key and value
+        String[] keyValue = data.split(":");
+        long keyHash = HashHelper.hashString(keyValue[0]);
+        String response = "Error: Not Found";
+
+        // if the query is between predecessor and local node, 
+        // put value in local node
+        if (isThisMyNode(keyHash)) {
+            localNode.getDataStore().put(keyValue[0], keyValue[1]);
+            response = "{" + keyValue[0] + "," + keyValue[1] + "} stored in " + keyHash + 
+                ", which on the node" + localNode.getId();
+        }
+        // if the query is between local node and successor, 
+        // put value in successor
+        else if (isThisNextNode(keyHash)) {
+            response = SocketAddrHelper.sendRequest(localNode.getSuccessor1(), "PUTVALUE_" + data);
+        }
+        // search the correct node by using finger table
+        else {
+            InetSocketAddress chordNode = localNode.findClosestPrecedingFinger(keyHash);
+            System.out.println("Searching node on chord to put value");
+            response = SocketAddrHelper.sendRequest(chordNode, "PUTVALUE_" + data);
+        }
+        
+        return response;
+    }
+
+    /**
+     * check whether the key's position is between predecessor and local node
+     * @param keyHash
+     * @return boolean
+     */
+    private boolean isThisMyNode(long keyHash) {
+        boolean res = false;
+        long preId = HashHelper.hashSocketAddress(localNode.getPredecessor());
+        // check the position of keyHash
+        if ((localNode.getId() > preId && keyHash > preId && keyHash <= localNode.getId()) || 
+            (localNode.getId() < preId && (keyHash > preId || keyHash <= localNode.getId()))) {
+            res = true;
+        }
+
+        return res;
+    }
+
+    /**
+     * check whether the key's position is between local node and successor
+     * @param keyHash
+     * @return boolean
+     */
+    private boolean isThisNextNode(long keyHash) {
+        boolean res = false;
+        long sucId = HashHelper.hashSocketAddress(localNode.getSuccessor());
+        // check the position of keyHash
+        if ((localNode.getId() < sucId && keyHash > localNode.getId() && keyHash <= sucId) || 
+            (localNode.getId() > sucId && (keyHash > localNode.getId() || keyHash <= sucId))) {
+            res = true;
+        }
+
+        return res;
+    }
+
+
+    private String findNode(InetSocketAddress query) {
+        long queryId = HashHelper.hashSocketAddress(query);
+        //wrap id if it's bigger than chord size
+        queryId = queryId % HashHelper.getPowerOfTwo(32);
+
+        String response = "NOT FOUND T.T";
+
+        //if queryId is in localNode
+        if (isThisMyNode(queryId)) {
+            response = buildResponse(localNode.getAddress(), "NODEFOUND_");
+        }
+        //else if queryId is in localNode's successor
+        else if (isThisNextNode(queryId)) {
+            response = buildResponse(localNode.getSuccessor(), "NODEFOUND_");
+        }
+        //else recursive call findNode to find queryId
+        else {
+            InetSocketAddress closestNodeToQueryId = localNode.findClosestPrecedingFinger(queryId);
+            System.out.println("Query ID: " + queryId + " on " + closestNodeToQueryId.getAddress() + " : "
+                                + closestNodeToQueryId.getPort());
+            String nextRequest = buildResponse(query, "FINDNODE_");
+            response = SocketAddrHelper.sendRequest(closestNodeToQueryId, nextRequest);
+            System.out.println("Response from node " + closestNodeToQueryId.getAddress() + ", port "
+                            + closestNodeToQueryId.getPort());
+
+        }
+        return response;
+    }
+
+    private boolean isThisMyNode(long queryId) {
+        boolean result = false;
+        long localNodeId = HashHelper.hashSocketAddress(localNode.getAddress());
+        long predecessorNodeId = HashHelper.hashSocketAddress(localNode.getPredecessor());
+
+        //predecessor and localNode is on the same side of 0
+        if (localNodeId > predecessorNodeId) {
+            if ((queryId > predecessorNodeId) && (queryId <= localNodeId)) {
+                result = true;
+            }
+        }
+        //predecessor is on the left side of 0, and localNode is on the right side of 0
+        else {
+            if ((queryId > predecessorNodeId) || queryId <= localNodeId) {
+                result = true;
+            }
+        }
+        return result;
+    }
+
+    private boolean isThisNextNode(long queryId) {
+        boolean result = false;
+        long localNodeId = HashHelper.hashSocketAddress(localNode.getAddress());
+        long successorNodeId = HashHelper.hashSocketAddress(localNode.getSuccessor());
+        //localNode and successor is on the same side of )
+        if (localNodeId < successorNodeId) {
+            if ((queryId > localNodeId) && (queryId <= successorNodeId)) {
+                result = true;
+            }
+        }
+        //localNode is on the left side of 0, and successor is on the right side of 0
+        else {
+            if ((queryId > localNodeId) || (queryId <= successorNodeId)) {
+                result = true;
+            }
+        }
+        return result;
+    }
+
+    private String requestKeyValues(InetSocketAddress nodeSocketAdd) {
+        long newNodeId = HashHelper.hashSocketAddress(nodeSocketAdd);
+        StringBuffer sbResponse = new StringBuffer();
+        for (Iterator<Map.Entry<String, String>> it = localNode.getDataStore().entrySet().iterator(); it.hasNext()) {
+            Map.Entry<String, String> entry = it.next();
+             String strKey = entry.getKey();
+             long hashedKeyEntry = HashHelper.hashString(strKey);
+            long localNodeId = HashHelper.hashSocketAddress(localNode.getAddress());
+             if (newNodeId < localNodeId
+                && ((hashedKeyEntry > localNodeId)) || (hashedKeyEntry < newNodeId)) {
+                sbResponse.append(strKey + ":" + entry.getValue());
+                sbResponse.append("::");
+
+                //remove key-value pair from the current node
+                 it.remove();
+            }
+             else if ((newNodeId > localNodeId)
+                && (hashedKeyEntry > localNodeId && hashedKeyEntry < newNodeId)) {
+                 sbResponse.append(strKey + ":" + entry.getValue());
+                 sbResponse.append("::");
+
+                 //remove the key value pair from the current node
+                 it.remove();
+             }
+        }
+        String response = sbResponse.toString();
+        if (response != null && !response.isEmpty() && response != "") {
+            response = response.substring(0, response.length() - 2);
+        }
+        return response;
+    }
+
 }

@@ -27,7 +27,7 @@ public class UpdateFingers extends Thread{
 			if (next > 32) {
 				next = 2;
 			} // next's value will be [1-32]; if next > 32, we start over
-			InetSocketAddress ithfinger = local.findSuccessor(HashHelper.ithInFingerTable(local.getId(), next));
+			InetSocketAddress ithfinger = local.findSuccessor(HashHelper.ithInFingerTable(local.getNodeId(), next));
 			local.updateFingers(next, ithfinger);
 			try {
 				Thread.sleep(500);

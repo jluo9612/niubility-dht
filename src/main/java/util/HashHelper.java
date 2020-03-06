@@ -1,5 +1,7 @@
 package util;
 
+//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
+
 import java.net.InetSocketAddress;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -114,8 +116,11 @@ public final class HashHelper {
         return (hexLongDigit(hash) + " (" + locate(hash) + "%)");
     }
 
+//    long hash = hashSocketAddress(addr);
+//		return (longTo8DigitHex(hash)+" ("+hash*100/Helper.getPowerOfTwo(32)+"%)");
+
     public static double locate(long hash) {
-        return hash / getPowerOfTwo(32) * 100;
+        return hash*100 / getPowerOfTwo(32);
     }
 
     /**
