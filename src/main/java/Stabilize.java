@@ -39,6 +39,8 @@ public class Stabilize implements Stabilizeable {
     public void checkAndUpdate(InetSocketAddress successor) {
         InetSocketAddress localAddr = local.getAddress();
 
+        long local_id = HashHelper.hashSocketAddress(localAddr);
+
         if (successor == null || successor.equals(localAddr)) { //successor exited
             local.updateFingers(-3, null); //fill
         }

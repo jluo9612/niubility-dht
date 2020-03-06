@@ -1,0 +1,8 @@
+course: Distributed Systems
+project:A Chord-based Distributed Hash Table
+teamname:Niubility
+member1:Zhulian Huang (W1280699)
+member2:Jiabei Luo (W1142195)
+member3:Yu Li (W1142195)
+member4:Zihan Zhang (W1538040)
+director: Ramin Moazzeni
