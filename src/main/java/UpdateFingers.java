@@ -17,7 +17,7 @@ public class UpdateFingers extends Thread{
 	public UpdateFingers(ChordNode node) {
 		local = node;
 		alive = true;
-		next = 1;
+		next = 2;
 	}
 
 	@Override
@@ -25,7 +25,7 @@ public class UpdateFingers extends Thread{
 		while (alive) {
 			next += 1;
 			if (next > 32) {
-				next = 1;
+				next = 2;
 			} // next's value will be [1-32]; if next > 32, we start over
 			InetSocketAddress ithfinger = local.findSuccessor(HashHelper.ithInFingerTable(local.getNodeId(), next));
 			local.updateFingers(next, ithfinger);
