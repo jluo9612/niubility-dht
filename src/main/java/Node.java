@@ -7,7 +7,9 @@ import interfaces.Stabilizeable;
 
 import java.net.InetSocketAddress;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.Map;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.locks.ReentrantLock;
 
 import static java.lang.Thread.sleep;
@@ -30,7 +32,7 @@ public class Node implements ChordNode {
     private PingPredecessor pingPredecessor;
     private String joinState;
     private boolean isLocked;
-    private ReentrantLock mutex;
+    private Semaphore mutex = new Semaphore(1);
 
     /**
      * Constructor
@@ -38,7 +40,6 @@ public class Node implements ChordNode {
      */
     public Node (InetSocketAddress address) {
 
-        mutex = new ReentrantLock();
         localAddress = address;
         localId = HashHelper.hashSocketAddress(localAddress);
 
@@ -49,7 +50,7 @@ public class Node implements ChordNode {
         }
 
         // initialize predecessor
-        predecessor1 = null;
+        predecessor1 = localAddress;
 
         // initialize threads
         listener = new RequestListener(this);
@@ -72,7 +73,7 @@ public class Node implements ChordNode {
         // (contact will never be null)
 
         if (contact != null && !contact.equals(localAddress)) {
-            mutex.lock();
+            lock();
             InetSocketAddress successor = SocketAddrHelper.requestAddress(contact, "FINDSUCC_" + localId);
             System.out.println("My successor is : " + successor.toString());
             if (successor == null)  {
@@ -80,7 +81,7 @@ public class Node implements ChordNode {
                 return false;
             }
             notify(successor);
-            mutex.unlock();
+            unlock();
         }
 
         // start all threads
@@ -114,7 +115,7 @@ public class Node implements ChordNode {
      */
     @Override
     public void notified(InetSocketAddress newpre) {
-        mutex.lock();
+        lock();
         InetSocketAddress oldPredecessor = predecessor1;
         if (getSuccessor1() == null || getSuccessor1().equals(localAddress)) {
             finger.put(1, newpre);
@@ -140,7 +141,7 @@ public class Node implements ChordNode {
 //        } catch (InterruptedException e) {
 //            e.printStackTrace();
 //        }
-        mutex.unlock();
+        unlock();
     }
 
     @Override
@@ -174,28 +175,30 @@ public class Node implements ChordNode {
         else {
             long oldpre_id = HashHelper.hashSocketAddress(predecessor1);
             long local_relative_id = HashHelper.getRelativeId(localId, oldpre_id);
-            long newpre_relative_id = HashHelper.getRelativeId(localId, HashHelper.hashSocketAddress(newPred));
-            if (newpre_relative_id > 0 && newpre_relative_id > local_relative_id)
+            long newpre_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(newPred), oldpre_id);
+            if (newpre_relative_id > 0 && newpre_relative_id < local_relative_id)
                 this.setPredecessor1(newPred);
         }
     }
 
     private void distributeKeyValues() {
         System.out.println("distributing key values");
-        String serverResponse = SocketAddrHelper.sendRequest(getSuccessor1(), "REQUESTKEYVALUES_" + ":" + this.localId);
+        String serverResponse = SocketAddrHelper.sendRequest(getSuccessor1(), "REQUESTKEYVALUES_" + localAddress.getAddress().toString()+":"+localAddress.getPort());
         if (serverResponse != null && !serverResponse.isEmpty() && serverResponse != "") {
             String[] keyValuePairs = serverResponse.split("::");
-            mutex.lock();
+            lock();
 
             for (int i = 0; i < keyValuePairs.length; i++) {
                 String[] keyValue = keyValuePairs[i].split(":", 2);
                 if (keyValue.length == 2) {
                     String key = keyValue[0];
                     String value = keyValue[1];
+
                     this.getDataStore().put(key, value);
+
                 }
             }
-            mutex.unlock();
+            unlock();
         }
     }
 
@@ -571,7 +574,7 @@ public class Node implements ChordNode {
         System.out.println("\n==============================================================");
         System.out.println("\nLOCAL:\t\t\t\t"+localAddress.toString()+"\t"+HashHelper.hexIdAndLocation(localAddress));
         System.out.println("Is Locked?");
-        if(mutex.isLocked()) {
+        if(isLocked()) {
             System.out.println("YES");
         }else {
             System.out.println("NO");
@@ -593,6 +596,12 @@ public class Node implements ChordNode {
                 sb.append("NULL");
             System.out.println(sb.toString());
         }
+        System.out.println("Datastore**************");
+        lock();
+        for (String key: getDataStore().keySet()) {
+            System.out.println("key:" + key);
+        }
+        unlock();
         System.out.println("\n==============================================================\n");
     }
 
@@ -618,21 +627,27 @@ public class Node implements ChordNode {
 
     @Override
     public boolean isLocked() {
-        return mutex.isLocked();
+        return mutex.availablePermits() != 1;
     }
 
     public void lock() {
-        mutex.lock();
+        try {
+            mutex.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public void unlock() {
-        mutex.unlock();
+        mutex.release();
     }
 
+    @Override
     public Map<String, String> getDataStore() {
         return dataStore;
     }
 
+    @Override
     public void setDataStore(Map<String, String> dataStore) {
         this.dataStore = dataStore;
     }

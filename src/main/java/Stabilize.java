@@ -49,22 +49,20 @@ public class Stabilize implements Stabilizeable {
      * Move a replica of corresponding key-values to successor and delete incorrect replicas in local data store
      */
     private void manageReplica() {
-
+        local.lock();
         // loop through data map entries of this node
         Map<String, String> map = local.getDataStore();
 
-        for (Map.Entry<String, String> entry : map.getEntrySet()) {
+        for (Map.Entry<String, String> entry : map.entrySet()) {
             try {
                 String dataKey = entry.getKey();
                 String dataValue = entry.getValue();
-                long keyNodeId = new HashHelper.hashString(dataKey);
+                long keyNodeId = HashHelper.hashString(dataKey);
 
-                // Wrap queryNodeId
-                if (keyNodeId >= DHTMain.RING_SIZE) {
-                    keyNodeId -= DHTMain.RING_SIZE;
-                }
+
 
                 if (isThisMyNode(keyNodeId)) {
+
                     // this node's data
                     replicateToSuccessor(local.getSuccessor1(), dataKey, dataValue);
                 } else {
@@ -73,7 +71,7 @@ public class Stabilize implements Stabilizeable {
                     // delete dataKey 
                     if (amIASuccessor(keyNodeId)) {
                         local.lock();
-                        entry.remove(); // !!!
+                        map.remove(keyNodeId); // !!!
                         local.unlock();
                     }
 
@@ -82,6 +80,7 @@ public class Stabilize implements Stabilizeable {
                 e.printStackTrace();
             }
         }
+        local.unlock();
 
     }
 
@@ -99,29 +98,30 @@ public class Stabilize implements Stabilizeable {
             // request format?!!!!!
 
             // find the correct node address (which keyNodeId belongs to)
-            response = SocketAddrHelper.sendRequest(successor,DHTMain.FIND_NODE + ":" + keyNodeId);
+            response = SocketAddrHelper.sendRequest(successor,"FINDNODE_" + keyNodeId);
 
             System.out.println(response);
 
             InetSocketAddress targetAddr = null;
             // default = empty or Not found?
-            if (!(response == null || response.isEmpty() || response.equalsIgnoreCase("Not found."))) {
+            if (response.startsWith("NODEFOUND")) {
                 // Parse for target address
-                String[] serverResponseFragments = response.split(":", 2);
-                String[] addressFragments = serverResponseFragments[1].split(":");
-                targetAddr = new InetSocketAddress(addressFragments[0], Integer.parseInt(addressFragments[1]));
+                String[] ipAddrPort = response.split("_")[1].substring(1).split(":");
+
+                targetAddr = new InetSocketAddress(ipAddrPort[0], Integer.parseInt(ipAddrPort[1]));
             }
 
             if (targetAddr != null) {
                 String placeholder = "content"; // avoid indexOutOfRange exception
                 // get the successor
-                response = SocketAddrHelper.sendRequest(DHTMain.GET_SUCCESSORS + ":" + placeholder);
+                response = SocketAddrHelper.sendRequest(targetAddr, "YOURSUCC_" + placeholder);
 
                 // delete if local is not a successor
                 if (response != null && !response.isEmpty()) {
-                    InetSocketAddress successorAddr = response; // response is String from sendRequest!!
+                    String[] ip = response.substring(1).split(":");
+                    InetSocketAddress successorAddr = new InetSocketAddress(ip[0], Integer.valueOf(ip[1])); // response is String from sendRequest!!
                     long successorId = HashHelper.hashSocketAddress(successorAddr);
-                    long localId = local.getId();
+                    long localId = local.getNodeId();
                     if (localId != successorId) {
                         canDelete = true;
                     }
@@ -141,9 +141,12 @@ public class Stabilize implements Stabilizeable {
      */
     private boolean isThisMyNode(long queryNodeId) {
         boolean myNode = false;
-        long predId = HashHelper.hashSocketAddress(local.getPredecessor());
+        if (local.getPredecessor1() == null) {
+            System.out.println("local.getPredecessor() is null");
+        }
+        long predId = HashHelper.hashSocketAddress(local.getPredecessor1());
 
-        if (local.getId() > predId) {
+        if (local.getNodeId() > predId) {
             // predecessor < queryNodeId <= local
             if ((queryNodeId > predId) && (queryNodeId <= predId)) {
                 myNode = true;
@@ -182,7 +185,6 @@ public class Stabilize implements Stabilizeable {
     @Override
     public void checkAndUpdate(InetSocketAddress successor) {
         InetSocketAddress localAddr = local.getAddress();
-        long local_id = local.getId();
 
         if (successor == null || successor.equals(localAddr)) { //successor exited
             local.updateFingers(-3, null);
@@ -224,7 +226,7 @@ public class Stabilize implements Stabilizeable {
 
             InetSocketAddress successor = local.getSuccessor1();
             if (!local.getAddress().equals(successor)) {
-                System.out.println("Stabilization is now running.");
+//                System.out.println("Stabilization is now running.");
 
                 // successor = local.getSuccessor1();
                 checkAndUpdate(successor);
@@ -232,7 +234,7 @@ public class Stabilize implements Stabilizeable {
 
             }
             try {
-                Thread.sleep(15000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

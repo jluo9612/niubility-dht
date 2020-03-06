@@ -1,5 +1,3 @@
-//import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
 import util.SocketAddrHelper;
 
 import java.net.InetAddress;

@@ -1,9 +1,10 @@
-package query.main.java;
+package query;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
-import java.net.Socket;
 
 import util.HashHelper;
 import util.SocketAddrHelper;
@@ -22,7 +23,7 @@ public class LoadData {
 
     private void writeToChord() {
         try {
-            String pathname = "../../resource/data.txt";
+            String pathname = "src/main/java/query/resource/data.txt";
             File filename = new File(pathname);
             InputStreamReader reader = new InputStreamReader(new FileInputStream(filename));
             BufferedReader br = new BufferedReader(reader);

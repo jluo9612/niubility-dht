@@ -1,9 +1,12 @@
-package query.main.java;
+package query;
+
+import util.HashHelper;
+import util.SocketAddrHelper;
 
 import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
 
-import jdk.internal.jline.internal.InputStreamReader;
 
 public class QueryNode {
     private InetSocketAddress chordNode;

@@ -1,4 +1,4 @@
-package query.main.java;
+package query;
 
 import util.SocketAddrHelper;
 

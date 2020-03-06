@@ -1,6 +1,7 @@
 package interfaces;
 
 import java.net.InetSocketAddress;
+import java.util.Map;
 
 public interface ChordNode {
     /**
@@ -98,4 +99,8 @@ public interface ChordNode {
     String setNewSucc(InetSocketAddress successor);
 
     void updateNewPre(InetSocketAddress predecessor);
+
+    Map<String, String> getDataStore();
+
+    void setDataStore(Map<String, String> dataStore);
 }

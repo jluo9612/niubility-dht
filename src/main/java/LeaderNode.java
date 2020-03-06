@@ -1,6 +1,7 @@
 import interfaces.ChordNode;
 
 import java.net.InetSocketAddress;
+import java.util.Map;
 
 public class LeaderNode implements ChordNode{
     private ChordNode node;
@@ -126,6 +127,16 @@ public class LeaderNode implements ChordNode{
 
     @Override
     public void updateNewPre(InetSocketAddress predecessor) {
+
+    }
+
+    @Override
+    public Map<String, String> getDataStore() {
+        return null;
+    }
+
+    @Override
+    public void setDataStore(Map<String, String> dataStore) {
 
     }
 }
