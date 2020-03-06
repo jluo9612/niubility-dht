@@ -1,13 +1,12 @@
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
-import util.HashHelper;
 import util.SocketAddrHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
+
+import static java.lang.Thread.sleep;
 
 /**
  * RequestHandler class processes requests sent by RequestListener
@@ -48,7 +47,7 @@ public class RequestHandler implements Runnable{
         }
         //get successor
         if (request.startsWith("YOURSUCC")) {
-            result = localNode.getSuccessor();
+            result = localNode.getSuccessor1();
             if (result != null) {
                 response = buildResponse(result, "MYSUCC_");
             } else {
@@ -57,7 +56,7 @@ public class RequestHandler implements Runnable{
         }
         //get predecessor
         else if (request.startsWith("YOURPRE")) {
-            result = localNode.getPredecessor();
+            result = localNode.getPredecessor1();
             if (result != null) {
                 response = buildResponse(result, "MYPRE_");
             } else {
@@ -79,6 +78,15 @@ public class RequestHandler implements Runnable{
         //claim as predecessor
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            while(localNode.isLocked()) {
+                try {
+                    sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked from:" + newPredecessor.toString());
+            }
+            //System.out.println("unlocked at port:"+localNode.getAddress().getPort());
             localNode.notified(newPredecessor);
             response = "NOTIFIED";
         }
@@ -86,6 +94,34 @@ public class RequestHandler implements Runnable{
             response = "ALIVE";
         }
 
+        else if (request.startsWith("ISLOCKED")) {
+            if (localNode.isLocked()) {
+                response = "LOCKED";
+            } else {
+                response = "UNLOCKED";
+
+            }
+        }
+        else if (request.startsWith("YOUCANJOIN")) {
+            String[] IPAddress = request.split("_");
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(IPAddress[1]);
+            InetSocketAddress oldPredOfSucc = null;
+            if (IPAddress.length > 2) {
+                oldPredOfSucc = SocketAddrHelper.createSocketAddress(IPAddress[2]);
+            }
+            localNode.joinAndHint(successor, oldPredOfSucc);
+            response = "BEALLOWED";
+        }
+        else if (request.startsWith("IAMNEWSUCC")) {
+            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.hinted(successor);
+            response = "HINTED";
+        }
+        else if (request.startsWith("YOUAREMYSUCC")) {
+            InetSocketAddress predecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.updateNewPre(predecessor);
+            response = "UPDATED";
+        }
         // load data
         else if (request.startsWith("PUTVALUE")) {
             String data = request.split("_")[1];
@@ -96,7 +132,6 @@ public class RequestHandler implements Runnable{
             String key = request.split("_")[1];
             response = getValue(key);
         }
-
 
         return response;
     }

@@ -25,6 +25,16 @@ public class LeaderNode implements ChordNode{
     }
 
     @Override
+    public void joinAndHint(InetSocketAddress newSucc, InetSocketAddress oldPredOfSucc) {
+
+    }
+
+    @Override
+    public void hinted(InetSocketAddress successor) {
+
+    }
+
+    @Override
     public InetSocketAddress findSuccessor(long id) {
         return null;
     }
@@ -45,7 +55,7 @@ public class LeaderNode implements ChordNode{
     }
 
     @Override
-    public long getId() {
+    public long getNodeId() {
         return 0;
     }
 
@@ -55,12 +65,12 @@ public class LeaderNode implements ChordNode{
     }
 
     @Override
-    public InetSocketAddress getPredecessor() {
+    public InetSocketAddress getPredecessor1() {
         return null;
     }
 
     @Override
-    public InetSocketAddress getSuccessor() {
+    public InetSocketAddress getSuccessor1() {
         return null;
     }
 
@@ -76,6 +86,46 @@ public class LeaderNode implements ChordNode{
 
     @Override
     public void stopAllThreads() {
+
+    }
+
+    @Override
+    public String getJoinState() {
+        return null;
+    }
+
+    @Override
+    public boolean isLocked() {
+        return false;
+    }
+
+    @Override
+    public String getNodeIpAddress() {
+        return null;
+    }
+
+    @Override
+    public int getPort() {
+        return 0;
+    }
+
+    @Override
+    public void lock() {
+
+    }
+
+    @Override
+    public void unlock() {
+
+    }
+
+    @Override
+    public String setNewSucc(InetSocketAddress successor) {
+        return null;
+    }
+
+    @Override
+    public void updateNewPre(InetSocketAddress predecessor) {
 
     }
 }

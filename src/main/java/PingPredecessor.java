@@ -20,7 +20,7 @@ public class PingPredecessor extends Thread {
 	@Override
 	public void run() {
 		while (alive) {
-			InetSocketAddress predecessor = local.getPredecessor();
+			InetSocketAddress predecessor = local.getPredecessor1();
 			if (predecessor != null) {
 				String response = SocketAddrHelper.sendRequest(predecessor, "KEEP");
 				if (response == null || !response.equals("ALIVE")) {

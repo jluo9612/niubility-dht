@@ -29,7 +29,7 @@ public class Stabilize implements Stabilizeable {
         long successor_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(oldSucc), local_id);
         long x_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(newSucc),local_id);
         if (x_relative_id>0 && x_relative_id < successor_relative_id) {
-            local.updateFingers(1,newSucc);
+            //local.updateFingers(1,newSucc);
             return true;
         }
         return false;
@@ -38,13 +38,14 @@ public class Stabilize implements Stabilizeable {
     @Override
     public void checkAndUpdate(InetSocketAddress successor) {
         InetSocketAddress localAddr = local.getAddress();
+
         long local_id = HashHelper.hashSocketAddress(localAddr);
 
         if (successor == null || successor.equals(localAddr)) { //successor exited
             local.updateFingers(-3, null); //fill
         }
 
-        // successor = local.getSuccessor();
+        successor = local.getSuccessor1();
         if (successor != null && !successor.equals(localAddr)) { // C
 
             // checkNewSuccessor
@@ -58,14 +59,18 @@ public class Stabilize implements Stabilizeable {
 
             // else if successor's predecessor is not equal to local
             else if (!x.equals(successor)) {
-                if (isNewSuccessor(local_id, x, successor)) {
+                long local_id = HashHelper.hashSocketAddress(localAddr);
+                long successor_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(successor), local_id);
+                long x_relative_id = HashHelper.getRelativeId(HashHelper.hashSocketAddress(x),local_id);
+                if (x_relative_id>0 && x_relative_id < successor_relative_id) {
                     local.updateFingers(1,x);
                 }
+
             }
 
             // successor's predecessor is successor itself, then notify successor
             else {
-                local.notify(successor);
+                local.setNewSucc(successor);
             }
         }
     }
@@ -74,7 +79,7 @@ public class Stabilize implements Stabilizeable {
     public void run() {
         while (alive) {
 
-            InetSocketAddress successor = local.getSuccessor();
+            InetSocketAddress successor = local.getSuccessor1();
             checkAndUpdate(successor);
 
             try {
