@@ -62,13 +62,13 @@ public interface ChordNode {
      * @return the variable caller wants
      */
 
-    long getId();
+    long getNodeId();
 
     InetSocketAddress getAddress();
 
-    InetSocketAddress getPredecessor();
+    InetSocketAddress getPredecessor1();
 
-    InetSocketAddress getSuccessor();
+    InetSocketAddress getSuccessor1();
 
     /**
      * Print functions
@@ -87,4 +87,15 @@ public interface ChordNode {
 
     boolean isLocked();
 
+    String getNodeIpAddress();
+
+    int getPort();
+
+    void lock();
+
+    void unlock();
+
+    String setNewSucc(InetSocketAddress successor);
+
+    void updateNewPre(InetSocketAddress predecessor);
 }

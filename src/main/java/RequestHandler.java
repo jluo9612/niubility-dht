@@ -1,11 +1,8 @@
-import com.sun.tools.corba.se.idl.toJavaPortable.Helper;
-import util.HashHelper;
 import util.SocketAddrHelper;
 
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 
@@ -50,7 +47,7 @@ public class RequestHandler implements Runnable{
         }
         //get successor
         if (request.startsWith("YOURSUCC")) {
-            result = localNode.getSuccessor();
+            result = localNode.getSuccessor1();
             if (result != null) {
                 response = buildResponse(result, "MYSUCC_");
             } else {
@@ -59,7 +56,7 @@ public class RequestHandler implements Runnable{
         }
         //get predecessor
         else if (request.startsWith("YOURPRE")) {
-            result = localNode.getPredecessor();
+            result = localNode.getPredecessor1();
             if (result != null) {
                 response = buildResponse(result, "MYPRE_");
             } else {
@@ -82,11 +79,11 @@ public class RequestHandler implements Runnable{
         else if (request.startsWith("IAMPRE")) {
             InetSocketAddress newPredecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
             while(localNode.isLocked()) {
-//                try {
-//                    sleep(500);
-//                } catch (InterruptedException e) {
-//                    e.printStackTrace();
-//                }
+                try {
+                    sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
                 System.out.println("Node at port:"+localNode.getAddress().getPort()+"is being locked from:" + newPredecessor.toString());
             }
             //System.out.println("unlocked at port:"+localNode.getAddress().getPort());
@@ -120,8 +117,8 @@ public class RequestHandler implements Runnable{
             response = "HINTED";
         }
         else if (request.startsWith("YOUAREMYSUCC")) {
-            InetSocketAddress successor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
-            localNode.updateNewPre(successor);
+            InetSocketAddress predecessor = SocketAddrHelper.createSocketAddress(request.split("_")[1]);
+            localNode.updateNewPre(predecessor);
             response = "UPDATED";
         }
         return response;
