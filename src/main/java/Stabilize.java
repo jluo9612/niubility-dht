@@ -64,14 +64,21 @@ public class Stabilize implements Stabilizeable {
                 if (isThisMyNode(keyNodeId)) {
 
                     // this node's data
+                    System.out.println("this node's data");
+                    System.out.println("localNode is :" + local.getAddress());
+                    System.out.println("key is :" + dataKey);
+                    System.out.println("%%%%%%%%%%%%%%%%%%%%");
                     replicateToSuccessor(local.getSuccessor1(), dataKey, dataValue);
                 } else {
-            
+                    System.out.println();
+                    System.out.println("localNode is :" + local.getAddress());
+                    System.out.println("key is :" + dataKey);
+                    System.out.println("%%%%%%%%%%%%%%%%%%%%");
                     // if currentnode not a successor, i'm not supposed to keep it 
                     // delete dataKey 
                     if (amIASuccessor(keyNodeId)) {
                         local.lock();
-                        map.remove(keyNodeId); // !!!
+                        map.remove(dataKey); // !!!
                         local.unlock();
                     }
 
@@ -98,9 +105,11 @@ public class Stabilize implements Stabilizeable {
             // request format?!!!!!
 
             // find the correct node address (which keyNodeId belongs to)
+
             response = SocketAddrHelper.sendRequest(successor,"FINDNODE_" + keyNodeId);
 
             System.out.println(response);
+            System.out.println("keyNodeId:" + keyNodeId);
 
             InetSocketAddress targetAddr = null;
             // default = empty or Not found?
@@ -115,13 +124,15 @@ public class Stabilize implements Stabilizeable {
                 String placeholder = "content"; // avoid indexOutOfRange exception
                 // get the successor
                 response = SocketAddrHelper.sendRequest(targetAddr, "YOURSUCC_" + placeholder);
-
+                System.out.println("YOURSUCC response:" + response);
                 // delete if local is not a successor
-                if (response != null && !response.isEmpty()) {
-                    String[] ip = response.substring(1).split(":");
-                    InetSocketAddress successorAddr = new InetSocketAddress(ip[0], Integer.valueOf(ip[1])); // response is String from sendRequest!!
+                if (response.startsWith("MYSUCC")) {
+                    String[] ip = response.split("_")[1].substring(1).split(":");
+                    InetSocketAddress successorAddr = new InetSocketAddress(ip[0], Integer.parseInt(ip[1])); // response is String from sendRequest!!
+                    System.out.println("successorAddr:" + successorAddr.toString());
                     long successorId = HashHelper.hashSocketAddress(successorAddr);
                     long localId = local.getNodeId();
+                    System.out.println("localId: " + localId + "successorId: " + successorId);
                     if (localId != successorId) {
                         canDelete = true;
                     }
@@ -131,6 +142,7 @@ public class Stabilize implements Stabilizeable {
         } catch (Exception e) {
             e.printStackTrace();
         }
+        System.out.println("canDelete is" + canDelete);
         return canDelete;
     }
 
@@ -148,12 +160,12 @@ public class Stabilize implements Stabilizeable {
 
         if (local.getNodeId() > predId) {
             // predecessor < queryNodeId <= local
-            if ((queryNodeId > predId) && (queryNodeId <= predId)) {
+            if ((queryNodeId > predId) && (queryNodeId <= local.getNodeId())) {
                 myNode = true;
             }
         } else { // wrapping
             // local < predecessor && (predecessor < queryNodeId or queryNodeId <= local)
-            if ((queryNodeId > predId) || (queryNodeId <= predId)) {
+            if ((queryNodeId > predId) || (queryNodeId <= local.getNodeId())) {
                 myNode = true;
             }
         }
@@ -234,7 +246,7 @@ public class Stabilize implements Stabilizeable {
 
             }
             try {
-                Thread.sleep(3000);
+                Thread.sleep(10000);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }

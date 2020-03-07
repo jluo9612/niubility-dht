@@ -81,6 +81,7 @@ public class Node implements ChordNode {
                 return false;
             }
             notify(successor);
+            distributeKeyValues();
             unlock();
         }
 

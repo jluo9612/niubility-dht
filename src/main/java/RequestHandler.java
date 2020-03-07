@@ -147,7 +147,7 @@ public class RequestHandler implements Runnable{
             //based on query format, might need to be changed
             //supposed to be query key
 
-            response = findNode(Long.valueOf(request.split("_")[1]));
+            response = findNode(Long.parseLong(request.split("_")[1]));
         }
         else if (request.startsWith("REQUESTKEYVALUES")) {
             response = requestKeyValues(SocketAddrHelper.createSocketAddress(request.split("_")[1]));
@@ -161,10 +161,11 @@ public class RequestHandler implements Runnable{
 
             // put key,value to dataStore
             localNode.getDataStore().put(key, value);
+            localNode.unlock();
             System.out.println("Replicated " + key + "-" + value + " to "
                     + localNode.getNodeIpAddress() + ":" + localNode.getPort());
 
-            localNode.unlock();
+
             response = "REPLICATED";
         }
 
@@ -300,10 +301,12 @@ public class RequestHandler implements Runnable{
 
         //if queryId is in localNode
         if (isThisMyNode(queryId)) {
+            System.out.println("*****queryId:" + queryId);
             response = buildResponse(localNode.getAddress(), "NODEFOUND_");
         }
         //else if queryId is in localNode's successor
         else if (isThisNextNode(queryId)) {
+            System.out.println("*****queryId:" + queryId);
             response = buildResponse(localNode.getSuccessor1(), "NODEFOUND_");
         }
         //else recursive call findNode to find queryId
@@ -369,32 +372,34 @@ public class RequestHandler implements Runnable{
     private String requestKeyValues(InetSocketAddress nodeSocketAdd) {
         long newNodeId = HashHelper.hashSocketAddress(nodeSocketAdd);
         StringBuffer sbResponse = new StringBuffer();
+        localNode.lock();
         Map<String, String> map = localNode.getDataStore();
         for (Map.Entry<String, String> entry : map.entrySet()) {
              String strKey = entry.getKey();
              long hashedKeyEntry = HashHelper.hashString(strKey);
-             long localNodeId = HashHelper.hashSocketAddress(localNode.getAddress());
+             long localNodeId = localNode.getNodeId();
              if (newNodeId < localNodeId
-                && ((hashedKeyEntry > localNodeId)) || (hashedKeyEntry < newNodeId)) {
+                && (hashedKeyEntry > localNodeId || hashedKeyEntry < newNodeId)) {
                 sbResponse.append(strKey + ":" + entry.getValue());
                 sbResponse.append("::");
 
                 //remove key-value pair from the current node
-                 localNode.lock();
+
                  map.remove(strKey);
-                 localNode.unlock();
+
             }
-             else if ((newNodeId > localNodeId)
+             else if (newNodeId > localNodeId
                 && (hashedKeyEntry > localNodeId && hashedKeyEntry < newNodeId)) {
                  sbResponse.append(strKey + ":" + entry.getValue());
                  sbResponse.append("::");
 
                  //remove the key value pair from the current node
-                 localNode.lock();
+                 //localNode.lock();
                  map.remove(strKey);
-                 localNode.unlock();
+                 //localNode.unlock();
              }
         }
+        localNode.unlock();
         String response = sbResponse.toString();
         if (response != null && !response.isEmpty() && response != "") {
             response = response.substring(0, response.length() - 2);
